@@ -26,21 +26,23 @@ except Exception as e:
     st.write(f"CSS file not found. Default styling will be used. Error: {e}")
 
 # Function to query the Hugging Face model
-def query_huggingface_model(prompt):
+# Function to query the Hugging Face model
+def query_huggingface_model(prompt, max_retries=2):
     # Get API key from Streamlit secrets (set in Streamlit Cloud)
     api_token = st.secrets["HF_API_TOKEN"]
     
-    API_URL = "https://api-inference.huggingface.co/models/unsloth/Phi-3.5-mini-instruct"
+    # Using Microsoft's Phi-2 model which is more reliable on the free tier
+    API_URL = "https://api-inference.huggingface.co/models/microsoft/phi-2"
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json"
     }
     
-    # Format the prompt for the model
+    # Format the prompt for the Phi-2 model (simpler format)
     prompt_with_context = (
         f"You are a helpful assistant specialized in Singapore history. "
         f"Keep your answers factual, informative and focused on Singapore's history. "
-        f"<|user|>\n{prompt}\n<|assistant|>"
+        f"Question: {prompt}\nAnswer:"
     )
     
     # Prepare the payload
@@ -54,29 +56,62 @@ def query_huggingface_model(prompt):
         }
     }
     
-    try:
-        # Make the API request
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        
-        # Check if the request was successful
-        if response.status_code == 200:
-            # Extract the assistant's response from the model output
-            full_response = response.json()[0]["generated_text"]
+    # Add retry logic
+    for attempt in range(max_retries):
+        try:
+            # Make the API request
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
             
-            # Extract just the assistant's reply
-            assistant_reply = full_response.split("<|assistant|>")[1].strip()
-            return assistant_reply
-        else:
-            # Handle different error codes
-            if response.status_code == 503:
-                return "The model is currently busy or loading. Please try again in a moment."
+            # Check if the request was successful
+            if response.status_code == 200:
+                try:
+                    # More robust extraction of the generated text
+                    response_json = response.json()
+                    
+                    # Handle different response formats
+                    if isinstance(response_json, list) and len(response_json) > 0:
+                        # Format for older models
+                        generated_text = response_json[0].get("generated_text", "")
+                    elif isinstance(response_json, dict):
+                        # Format for some newer models
+                        generated_text = response_json.get("generated_text", "")
+                    else:
+                        # Fallback
+                        generated_text = str(response_json)
+                    
+                    # Phi-2 tends to repeat the prompt, attempt to extract just the answer
+                    if "Answer:" in generated_text:
+                        answer_part = generated_text.split("Answer:", 1)[1].strip()
+                        return answer_part
+                    else:
+                        # If we can't find the format we expect, return the whole response
+                        return generated_text.replace(prompt_with_context, "").strip()
+                except Exception as e:
+                    # If we fail to parse the JSON, return the raw text
+                    return f"Response processing error: {str(e)}. Raw response: {response.text[:300]}..."
+            
+            # If model is loading, wait and retry
+            elif response.status_code == 503:
+                if attempt < max_retries - 1:  # Don't sleep on the last attempt
+                    time.sleep(10)  # Wait 10 seconds before retrying
+                    continue
+                else:
+                    return "The model is currently busy or loading. Please try again in a moment."
             else:
+                # Other error status codes
                 return f"Sorry, I encountered an error (Status code: {response.status_code}). Please try again later."
+        
+        except requests.exceptions.Timeout:
+            if attempt < max_retries - 1:
+                time.sleep(5)
+                continue
+            else:
+                return "The request timed out. The model might be busy. Please try again in a moment."
+        except Exception as e:
+            return f"An error occurred: {str(e)}. Please try again later."
     
-    except requests.exceptions.Timeout:
-        return "The request timed out. The model might be busy. Please try again in a moment."
-    except Exception as e:
-        return f"An error occurred: {str(e)}. Please try again later."
+    # If we've exhausted all retries
+    return "Unable to get a response after multiple attempts. Please try again later."
 
 # Setup sidebar
 with st.sidebar:
