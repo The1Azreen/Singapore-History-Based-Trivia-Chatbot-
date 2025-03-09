@@ -25,24 +25,23 @@ try:
 except Exception as e:
     st.write(f"CSS file not found. Default styling will be used. Error: {e}")
 
-# Function to query the Hugging Face model
-# Function to query the Hugging Face model
+# Change huggingface model from lines 29 to 126
 def query_huggingface_model(prompt, max_retries=2):
-    # Get API key from Streamlit secrets (set in Streamlit Cloud)
+    # Get API key from Streamlit secrets
     api_token = st.secrets["HF_API_TOKEN"]
     
-    # Using Microsoft's Phi-2 model which is more reliable on the free tier
-    API_URL = "https://api-inference.huggingface.co/models/microsoft/phi-2"
+    # Using Microsoft's Phi-3.5-mini-instruct model
+    API_URL = "https://api-inference.huggingface.co/models/microsoft/phi-3.5-mini-instruct"
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json"
     }
     
-    # Format the prompt for the Phi-2 model (simpler format)
+    # Format the prompt for Phi-3.5-mini
     prompt_with_context = (
-        f"You are a helpful assistant specialized in Singapore history. "
-        f"Keep your answers factual, informative and focused on Singapore's history. "
-        f"Question: {prompt}\nAnswer:"
+        f"<|system|>\nYou are a helpful assistant specialized in Singapore history. "
+        f"Keep your answers factual, informative and focused on Singapore's history.\n"
+        f"<|user|>\n{prompt}\n<|assistant|>"
     )
     
     # Prepare the payload
@@ -60,12 +59,16 @@ def query_huggingface_model(prompt, max_retries=2):
     for attempt in range(max_retries):
         try:
             # Make the API request
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=45)
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+            
+            # Log response for debugging
+            print(f"Status code: {response.status_code}")
+            print(f"Response preview: {response.text[:300]}")
             
             # Check if the request was successful
             if response.status_code == 200:
                 try:
-                    # More robust extraction of the generated text
+                    # Process the response
                     response_json = response.json()
                     
                     # Handle different response formats
@@ -79,34 +82,43 @@ def query_huggingface_model(prompt, max_retries=2):
                         # Fallback
                         generated_text = str(response_json)
                     
-                    # Phi-2 tends to repeat the prompt, attempt to extract just the answer
-                    if "Answer:" in generated_text:
-                        answer_part = generated_text.split("Answer:", 1)[1].strip()
-                        return answer_part
+                    # Extract only the assistant's response
+                    if "<|assistant|>" in generated_text:
+                        assistant_response = generated_text.split("<|assistant|>")[1].strip()
+                        return assistant_response
                     else:
-                        # If we can't find the format we expect, return the whole response
+                        # If format not found, return everything after the prompt
                         return generated_text.replace(prompt_with_context, "").strip()
+                        
                 except Exception as e:
-                    # If we fail to parse the JSON, return the raw text
-                    return f"Response processing error: {str(e)}. Raw response: {response.text[:300]}..."
+                    # Log the error and response for debugging
+                    print(f"Error parsing response: {e}")
+                    print(f"Response content: {response.text[:300]}...")
+                    return f"I encountered an error processing the response. Please try again."
             
             # If model is loading, wait and retry
             elif response.status_code == 503:
-                if attempt < max_retries - 1:  # Don't sleep on the last attempt
-                    time.sleep(10)  # Wait 10 seconds before retrying
+                if attempt < max_retries - 1:
+                    # Wait longer between retries for larger models
+                    time.sleep(15)
                     continue
                 else:
-                    return "The model is currently busy or loading. Please try again in a moment."
+                    return "The model is currently initializing. This may take a minute since Phi-3.5-mini is loading. Please try again shortly."
             else:
                 # Other error status codes
-                return f"Sorry, I encountered an error (Status code: {response.status_code}). Please try again later."
-        
+                if response.status_code == 403:
+                    print(f"API Error: {response.status_code}")
+                    print(f"Response details: {response.text}")
+                    return "Access denied (HTTP 403). Your API token may not have permission to use this model. Please check your Hugging Face account permissions."
+
+                return f"Sorry, I encountered an error (Status code: {response.status_code}). Response: {response.text[:100]}... Please try again later."
+            
         except requests.exceptions.Timeout:
             if attempt < max_retries - 1:
-                time.sleep(5)
+                time.sleep(10)
                 continue
             else:
-                return "The request timed out. The model might be busy. Please try again in a moment."
+                return "The request timed out. Phi-3.5-mini is a large model and may take longer to respond. Please try again in a moment."
         except Exception as e:
             return f"An error occurred: {str(e)}. Please try again later."
     
