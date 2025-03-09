@@ -80,7 +80,7 @@ def query_huggingface_model(prompt):
 
 # Setup sidebar
 with st.sidebar:
-    st.title("Singapore History Bot")
+    st.title("Singapore History Chatbot")
     
     # Model info
     st.subheader("About")
@@ -139,7 +139,7 @@ with col2:
             else:
                 st.markdown(f"""
                 <div class="chat-container bot-container">
-                    <div class="message-header">Singapore History Bot</div>
+                    <div class="message-header">Singapore History Chatbot</div>
                     <div class="timestamp">{message["timestamp"]}</div>
                     {message["content"]}
                 </div>
@@ -194,6 +194,6 @@ with col2:
 # Footer with information
 st.markdown("""
 <div style="text-align: center; margin-top: 20px; margin-bottom: 20px; font-size: 12px; color: #888;">
-    This is a demonstration project. Information provided may not be completely accurate.
+    This is a demonstration project. 
 </div>
 """, unsafe_allow_html=True)
