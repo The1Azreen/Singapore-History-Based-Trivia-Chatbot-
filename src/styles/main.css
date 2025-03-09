@@ -1,0 +1,118 @@
+.chat-container {
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 10px;
+    position: relative;
+    font-size: 16px;
+}
+
+.user-container {
+    background-color: #f0f2f6;
+    border: 1px solid #e6e9ef;
+    text-align: left;
+}
+
+.bot-container {
+    background-color: white;
+    border: 1px solid #e6e9ef;
+    text-align: left;
+}
+
+.message-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: #555;
+}
+
+.timestamp {
+    font-size: 12px;
+    color: #888;
+    position: absolute;
+    right: 10px;
+    top: 10px;
+}
+
+.stTextInput input {
+    border-radius: 20px !important;
+}
+
+.title-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.input-container {
+    position: fixed;
+    bottom: 20px;
+    width: 100%;
+    padding-right: 5rem;
+}
+
+/* Additional styling for better visual presentation */
+.main-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Button styling */
+.send-button {
+    border-radius: 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.send-button:hover {
+    background-color: #45a049;
+}
+
+/* Animation for typing indicator */
+@keyframes typing {
+    0% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.3;
+    }
+}
+
+.typing-indicator span {
+    animation: typing 1s infinite;
+    margin-right: 5px;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
