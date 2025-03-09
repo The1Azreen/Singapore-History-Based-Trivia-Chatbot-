@@ -25,6 +25,7 @@ try:
 except Exception as e:
     st.write(f"CSS file not found. Default styling will be used. Error: {e}")
 
+
 # Change huggingface model from lines 29 to 126
 def query_huggingface_model(prompt, max_retries=2):
     # Get API key from Streamlit secrets
