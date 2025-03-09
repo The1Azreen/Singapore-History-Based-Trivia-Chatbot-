@@ -20,7 +20,7 @@ def load_css(css_file):
 
 # Load CSS File
 try:
-    css = load_css("styles/main.css")
+    css = load_css("src/styles/main.css")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 except Exception as e:
     st.write(f"CSS file not found. Default styling will be used. Error: {e}")
