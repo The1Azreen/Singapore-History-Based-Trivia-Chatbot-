@@ -1,5 +1,5 @@
-!pip install streamlit
-!pip install torch   
+pip install streamlit
+pip install torch   
 
 import streamlit as st
 import time
