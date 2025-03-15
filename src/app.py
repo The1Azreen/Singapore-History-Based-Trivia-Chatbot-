@@ -38,7 +38,7 @@ except Exception as e:
     st.write(f"CSS file not found. Default styling will be used. Error: {e}")
 
 # Load the vector store
-vector_store_directory = "./chroma_db"
+vector_store_directory = "\src\chromadb"
 embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
 vector_store = Chroma(persist_directory=vector_store_directory, embedding=embeddings)
