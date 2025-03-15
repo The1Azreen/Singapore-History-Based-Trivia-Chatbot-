@@ -4,6 +4,18 @@ from datetime import datetime
 import requests
 import json
 import os
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import Chroma
+from sklearn.pipeline import make_pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import gc
 
 # Page configuration
 st.set_page_config(
@@ -25,29 +37,42 @@ try:
 except Exception as e:
     st.write(f"CSS file not found. Default styling will be used. Error: {e}")
 
+# Load the vector store
+vector_store_directory = "./chroma_db"
+embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
+embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
+vector_store = Chroma(persist_directory=vector_store_directory, embedding=embeddings)
 
-# Change huggingface model from lines 29 to 126
+# Load the tokenizer and model
+tokenizer = AutoTokenizer.from_pretrained("microsoft/phi-3.5-mini-instruct")
+model = AutoModelForCausalLM.from_pretrained("microsoft/phi-3.5-mini-instruct")
+
+# Define the classifier
+questions = [
+    # Singapore History-related questions (1)
+    "Who was Sir Stamford Raffles?",
+    "Tell me about the Japanese Occupation in Singapore.",
+    # ... (other questions)
+    # Non-history questions (0)
+    "How do I cook a steak?",
+    "What is the best way to invest in stocks?",
+    # ... (other questions)
+]
+labels = [1] * 48 + [0] * 40
+X_train, X_test, y_train, y_test = train_test_split(questions, labels, test_size=0.2, random_state=42)
+classifier = make_pipeline(TfidfVectorizer(), MultinomialNB())
+classifier.fit(X_train, y_train)
+
+# Function to query the Hugging Face model with RAG
 def query_huggingface_model(prompt, max_retries=2):
-    # Get API key from Streamlit secrets
     api_token = st.secrets["HF_API_TOKEN"]
-    
-    # Using Microsoft's Phi-3.5-mini-instruct model
     API_URL = "https://api-inference.huggingface.co/models/microsoft/phi-3.5-mini-instruct"
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json"
     }
-    
-    # Format the prompt for Phi-3.5-mini
-    prompt_with_context = (
-        f"<|system|>\nYou are a helpful assistant specialized in Singapore history. "
-        f"Keep your answers factual, informative and focused on Singapore's history.\n"
-        f"<|user|>\n{prompt}\n<|assistant|>"
-    )
-    
-    # Prepare the payload
     payload = {
-        "inputs": prompt_with_context,
+        "inputs": prompt,
         "parameters": {
             "max_new_tokens": 512,
             "temperature": 0.7,
@@ -55,76 +80,64 @@ def query_huggingface_model(prompt, max_retries=2):
             "do_sample": True
         }
     }
-    
-    # Add retry logic
     for attempt in range(max_retries):
         try:
-            # Make the API request
             response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-            
-            # Log response for debugging
-            print(f"Status code: {response.status_code}")
-            print(f"Response preview: {response.text[:300]}")
-            
-            # Check if the request was successful
             if response.status_code == 200:
-                try:
-                    # Process the response
-                    response_json = response.json()
-                    
-                    # Handle different response formats
-                    if isinstance(response_json, list) and len(response_json) > 0:
-                        # Format for older models
-                        generated_text = response_json[0].get("generated_text", "")
-                    elif isinstance(response_json, dict):
-                        # Format for some newer models
-                        generated_text = response_json.get("generated_text", "")
-                    else:
-                        # Fallback
-                        generated_text = str(response_json)
-                    
-                    # Extract only the assistant's response
-                    if "<|assistant|>" in generated_text:
-                        assistant_response = generated_text.split("<|assistant|>")[1].strip()
-                        return assistant_response
-                    else:
-                        # If format not found, return everything after the prompt
-                        return generated_text.replace(prompt_with_context, "").strip()
-                        
-                except Exception as e:
-                    # Log the error and response for debugging
-                    print(f"Error parsing response: {e}")
-                    print(f"Response content: {response.text[:300]}...")
-                    return f"I encountered an error processing the response. Please try again."
-            
-            # If model is loading, wait and retry
+                response_json = response.json()
+                generated_text = response_json[0].get("generated_text", "")
+                if "<|assistant|>" in generated_text:
+                    assistant_response = generated_text.split("<|assistant|>")[1].strip()
+                    return assistant_response
+                else:
+                    return generated_text.replace(prompt, "").strip()
             elif response.status_code == 503:
                 if attempt < max_retries - 1:
-                    # Wait longer between retries for larger models
                     time.sleep(15)
                     continue
                 else:
-                    return "The model is currently initializing. This may take a minute since Phi-3.5-mini is loading. Please try again shortly."
+                    return "The model is currently initializing. Please try again shortly."
             else:
-                # Other error status codes
-                if response.status_code == 403:
-                    print(f"API Error: {response.status_code}")
-                    print(f"Response details: {response.text}")
-                    return "Access denied (HTTP 403). Your API token may not have permission to use this model. Please check your Hugging Face account permissions."
-
                 return f"Sorry, I encountered an error (Status code: {response.status_code}). Response: {response.text[:100]}... Please try again later."
-            
         except requests.exceptions.Timeout:
             if attempt < max_retries - 1:
                 time.sleep(10)
                 continue
             else:
-                return "The request timed out. Phi-3.5-mini is a large model and may take longer to respond. Please try again in a moment."
+                return "The request timed out. Please try again in a moment."
         except Exception as e:
             return f"An error occurred: {str(e)}. Please try again later."
-    
-    # If we've exhausted all retries
     return "Unable to get a response after multiple attempts. Please try again later."
+
+# Function to handle RAG-based question answering
+def rag_ask_question(question, top_k=3):
+    prediction = classifier.predict([question])[0]
+    if prediction == 0:
+        return "I'm sorry, but I can only answer questions related to Singapore's history."
+    retrieved_docs = vector_store.similarity_search(question, k=top_k)
+    context = "\n\n".join([doc.page_content for doc in retrieved_docs])
+    rag_prompt = f"""<|system|>
+You are a specialized AI assistant focused on Singapore's history. You have been trained on comprehensive historical resources about Singapore's history, culture, and development.
+
+Here is some relevant information to help answer the user's question:
+{context}
+
+Answer the question based on the provided information. If the information is not sufficient to answer the question confidently, acknowledge the limitations. Provide accurate, educational responses that help users better understand Singapore's rich historical narrative, based on documents you have retrieved.
+<|user|>
+{question}
+<|assistant|>
+"""
+    try:
+        assistant_response = query_huggingface_model(rag_prompt)
+        user_tag_pos = assistant_response.find("<|user|>")
+        if user_tag_pos != -1:
+            assistant_response = assistant_response[:user_tag_pos].strip()
+        system_tag_pos = assistant_response.find("<|system|>")
+        if system_tag_pos != -1:
+            assistant_response = assistant_response[:system_tag_pos].strip()
+        return assistant_response
+    except Exception as e:
+        return f"An error occurred: {e}"
 
 # Setup sidebar
 with st.sidebar:
@@ -219,8 +232,8 @@ with col2:
                 # Display typing indicator while waiting for response
                 with st.spinner("Thinking..."):
                     try:
-                        # Query the Hugging Face model
-                        response = query_huggingface_model(user_input)
+                        # Query the Hugging Face model using RAG
+                        response = rag_ask_question(user_input)
                         
                         # Add AI response to chat history
                         st.session_state.messages.append(
