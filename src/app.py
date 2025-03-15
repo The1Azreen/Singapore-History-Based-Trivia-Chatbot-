@@ -1,4 +1,3 @@
-
 import streamlit as st
 import time
 from datetime import datetime
@@ -7,10 +6,10 @@ import json
 import os
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from langchain.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 from sklearn.pipeline import make_pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.naive_bayes import MultinomialNB
@@ -39,10 +38,10 @@ except Exception as e:
     st.write(f"CSS file not found. Default styling will be used. Error: {e}")
 
 # Load the vector store
-vector_store_directory = "\src\chromadb"
+vector_store_directory = "src\\chromadb"
 embedding_model_name = "sentence-transformers/all-MiniLM-L6-v2"
 embeddings = HuggingFaceEmbeddings(model_name=embedding_model_name)
-vector_store = Chroma(persist_directory=vector_store_directory, embedding=embeddings)
+vector_store = Chroma(persist_directory=vector_store_directory, embedding_function=embeddings)
 
 # Load the tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("microsoft/phi-3.5-mini-instruct")
@@ -66,7 +65,7 @@ classifier.fit(X_train, y_train)
 
 # Function to query the Hugging Face model with RAG
 def query_huggingface_model(prompt, max_retries=2):
-    api_token = st.secrets["HF_API_TOKEN"]
+    api_token = os.getenv("HF_API_TOKEN")  # Use local environment variable
     API_URL = "https://api-inference.huggingface.co/models/microsoft/phi-3.5-mini-instruct"
     headers = {
         "Authorization": f"Bearer {api_token}",
