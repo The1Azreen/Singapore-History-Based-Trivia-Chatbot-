@@ -1,5 +1,12 @@
 # Singapore History-Based Trivia Chatbot AAI3008
 
+## Memners
+- Muhammad Azreen Bin Muhammad
+- Chan Jit Lin
+- Leong Tuck Ming Kenan
+- Wong Jun Kai
+- Justin Tan Yong An
+
 ## **Overview**
 
 This project aims to develop a personalized NLP learning assistant specializing in Singapore’s history, utilizing Retrieval-Augmented Generation (RAG) technology. The system will leverage the SIT library to create an engaging and educational platform delivering accurate and well-sourced historical information through interactive conversations. The chatbot will serve as both an educational tool for students and a public resource for anyone interested in Singapore’s rich history. 
@@ -16,6 +23,10 @@ Traditional methods of learning Singapore's history often lack engagement and ac
 
 ## Architecture
 The system will primarily utilize Wikipedia and public libraries as its knowledge base, accessing real-time data across multiple categories including Singapore's history, science, arts, sports, and geography. The data pipeline will handle HTML parsing, text preprocessing, and content extraction to ensure clean, relevant information. The system will maintain a cache of frequently accessed articles to optimize performance and reduce API calls.
+
+![Rag Training](image/Training.png)
+
+![Rag Inference](image/Inference.png)
 
 ## Instuction
 1. Clone the repository (excluding the dataset, which is not pushed to GitHub).
