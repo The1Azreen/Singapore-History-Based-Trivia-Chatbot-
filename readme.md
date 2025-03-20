@@ -29,13 +29,10 @@ The system will primarily utilize Wikipedia and public libraries as its knowledg
 ![Rag Inference](image/Inference.png)
 
 ## Instuction
-1. Clone the repository (excluding the dataset, which is not pushed to GitHub).
-2. Install the required dependencies.
-3. Run the chatbot application and start interacting.
+
 
 ## Note
 The dataset used for training the chatbot is not included in this repository to comply with data privacy and copyright policies. The repository will not provide said dataset to adhere to copyright laws.
 
 
-## Acknowledgments
-Special thanks to the contributors and sources that made this project possible.
+
