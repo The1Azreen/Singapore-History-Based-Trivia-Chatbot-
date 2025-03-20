@@ -29,7 +29,9 @@ The system will primarily utilize Wikipedia and public libraries as its knowledg
 ![Rag Inference](image/Inference.png)
 
 ## Instuction
-
+1. Run the dependencies on the requirement.txt
+2. For Training.ipynb follow the instructions on the notebook to train your model with the pdfs you provided (**NOTE** this runs Unsloth so it requires a CUDA capable GPU (E.g PASCAL onwards))
+3. 
 
 ## Note
 The dataset used for training the chatbot is not included in this repository to comply with data privacy and copyright policies. The repository will not provide said dataset to adhere to copyright laws.
