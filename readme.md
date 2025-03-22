@@ -32,6 +32,7 @@ The system will primarily utilize Wikipedia and public libraries as its knowledg
 1. Run the dependencies on the requirement.txt
 2. For Training.ipynb follow the instructions on the notebook to train your model with the pdfs you provided (**NOTE** this runs Unsloth so it requires a CUDA capable GPU (E.g PASCAL onwards))
 3. In the Inference folder there are two variant of the inference jupyter notebook. One variant runs the default model via huggingface should you want a cpu inference. The 2nd notebook allows you to load your checkpoint of both the model and rag to leverage their tuning with a gpu to give a more accurate result (albeit requiring a CUDA GPU to leverage said result)
+4. You can find a tuned model in the checkpoint model as well as a saved vector for rag in the vector_rag folder
 
 ## Note
 The dataset used for training the chatbot is not included in this repository to comply with data privacy and copyright policies. The repository will not provide said dataset to adhere to copyright laws.
